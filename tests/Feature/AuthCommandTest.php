@@ -2,6 +2,7 @@
 
 use App\Services\CredentialStore;
 use App\Services\FlareUrlResolver;
+use Illuminate\Support\Facades\Artisan;
 
 beforeEach(function () {
     $this->tempDir = sys_get_temp_dir().'/flare-cli-test-'.uniqid();
@@ -37,17 +38,7 @@ afterEach(function () {
     }
 });
 
-it('clears stored credentials and shows confirmation', function () {
-    $this->store->setToken('existing-token');
-
-    $this->artisan('logout')
-        ->expectsOutputToContain('flareapp.io')
-        ->assertExitCode(0);
-
-    expect($this->store->getToken())->toBeNull();
-});
-
-it('only clears the active host credentials', function () {
+it('shows the active context and all stored auth contexts without leaking tokens', function () {
     $this->store->setToken('production-token');
 
     putenv('FLARE_BASE_URL=https://ingress-staging.flareapp.io/api');
@@ -57,14 +48,29 @@ it('only clears the active host credentials', function () {
     $stagingStore->setToken('staging-token');
     $this->app->instance(CredentialStore::class, $stagingStore);
 
-    $this->artisan('logout')
-        ->expectsOutputToContain('staging.flareapp.io')
-        ->assertExitCode(0);
+    Artisan::call('auth');
 
-    expect($stagingStore->getToken())->toBeNull();
+    $output = Artisan::output();
 
-    putenv('FLARE_BASE_URL');
-    unset($_SERVER['FLARE_BASE_URL']);
+    expect($output)->toContain('https://staging.flareapp.io/api');
+    expect($output)->toContain('staging.flareapp.io');
+    expect($output)->toContain('configured');
+    expect($output)->toContain('flareapp.io');
+    expect($output)->not->toContain('production-token');
+    expect($output)->not->toContain('staging-token');
+});
 
-    expect((new CredentialStore(new FlareUrlResolver))->getToken())->toBe('production-token');
+it('reports when the active auth context is missing', function () {
+    $this->store->setToken('production-token');
+
+    putenv('FLARE_BASE_URL=https://ingress-staging.flareapp.io/api');
+    $_SERVER['FLARE_BASE_URL'] = 'https://ingress-staging.flareapp.io/api';
+
+    Artisan::call('auth');
+
+    $output = Artisan::output();
+
+    expect($output)->toContain('missing');
+    expect($output)->toContain('flareapp.io');
+    expect($output)->toContain('staging.flareapp.io');
 });

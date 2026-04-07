@@ -5,6 +5,7 @@ it('registers key API commands from the OpenAPI spec', function (string $command
 
     expect($commands)->toContain($command);
 })->with([
+    'auth',
     'list-projects',
     'resolve-error',
     'list-error-occurrences',

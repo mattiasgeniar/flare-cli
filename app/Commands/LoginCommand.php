@@ -4,6 +4,7 @@ namespace App\Commands;
 
 use App\Concerns\RendersBanner;
 use App\Services\CredentialStore;
+use App\Services\FlareUrlResolver;
 use Illuminate\Support\Facades\Http;
 use LaravelZero\Framework\Commands\Command;
 
@@ -15,11 +16,16 @@ class LoginCommand extends Command
 
     protected $description = 'Store your Flare API token for authentication';
 
-    public function handle(CredentialStore $credentials): int
+    public function handle(CredentialStore $credentials, FlareUrlResolver $urlResolver): int
     {
         $this->renderBanner($this->output);
 
-        $this->line('You can generate a token at <href=https://flareapp.io/account/api-tokens>https://flareapp.io/account/api-tokens</>');
+        $this->line("Active API base URL: <href={$urlResolver->getApiBaseUrl()}>{$urlResolver->getApiBaseUrl()}</>");
+        $this->line("Active auth host: {$urlResolver->getHostKey()}");
+        $this->newLine();
+        $tokenUrl = "{$urlResolver->getAppUrl()}/account/api-tokens";
+
+        $this->line("You can generate a token at <href={$tokenUrl}>{$tokenUrl}</>");
         $this->newLine();
 
         $token = $this->secret('Enter your Flare API token');
@@ -31,7 +37,7 @@ class LoginCommand extends Command
         }
 
         try {
-            $response = Http::withToken($token)->get('https://flareapp.io/api/me');
+            $response = Http::withToken($token)->get("{$urlResolver->getApiBaseUrl()}/me");
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             $this->error('Could not connect to Flare. Please check your internet connection.');
 
@@ -50,6 +56,7 @@ class LoginCommand extends Command
 
         $this->newLine();
         $this->info("  🎉 Successfully logged in as {$email}  ");
+        $this->line("Stored credentials for {$urlResolver->getHostKey()}.");
         $this->newLine();
         $this->line('The Flare CLI comes with a Claude Code skill that allows Claude to manage your errors and performance data.');
         $this->line('Publish it with: <comment>claude skill install spatie/flare-cli</comment>');

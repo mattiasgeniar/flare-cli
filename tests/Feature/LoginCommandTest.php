@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\CredentialStore;
+use App\Services\FlareUrlResolver;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -8,11 +9,23 @@ beforeEach(function () {
     mkdir($this->tempDir, 0755, true);
     $_SERVER['HOME'] = $this->tempDir;
 
-    $this->store = new CredentialStore;
+    $this->originalBaseUrl = getenv('FLARE_BASE_URL') ?: null;
+    putenv('FLARE_BASE_URL');
+    unset($_SERVER['FLARE_BASE_URL']);
+
+    $this->store = new CredentialStore(new FlareUrlResolver);
     $this->app->instance(CredentialStore::class, $this->store);
 });
 
 afterEach(function () {
+    if ($this->originalBaseUrl === null) {
+        putenv('FLARE_BASE_URL');
+        unset($_SERVER['FLARE_BASE_URL']);
+    } else {
+        putenv("FLARE_BASE_URL={$this->originalBaseUrl}");
+        $_SERVER['FLARE_BASE_URL'] = $this->originalBaseUrl;
+    }
+
     $configFile = $this->tempDir.'/.flare/config.json';
     if (file_exists($configFile)) {
         unlink($configFile);
@@ -54,6 +67,26 @@ it('shows error and does not store token on invalid token', function () {
         ->assertExitCode(1);
 
     expect($this->store->getToken())->toBeNull();
+});
+
+it('validates the token against the active base URL', function () {
+    putenv('FLARE_BASE_URL=https://ingress-staging.flareapp.io/api/');
+    $_SERVER['FLARE_BASE_URL'] = 'https://ingress-staging.flareapp.io/api/';
+
+    Http::fake([
+        'staging.flareapp.io/api/me' => Http::response([
+            'email' => 'alex+staging@spatie.be',
+        ]),
+    ]);
+
+    $this->artisan('login')
+        ->expectsQuestion('Enter your Flare API token', 'staging-token-123')
+        ->expectsOutputToContain('https://staging.flareapp.io/api')
+        ->expectsOutputToContain('https://staging.flareapp.io/account/api-tokens')
+        ->expectsOutputToContain('Successfully logged in as alex+staging@spatie.be')
+        ->assertExitCode(0);
+
+    expect($this->store->getToken())->toBe('staging-token-123');
 });
 
 it('shows connection error on network failure', function () {
