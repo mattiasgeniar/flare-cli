@@ -2,6 +2,14 @@
 
 All notable changes to `flare-cli` will be documented in this file.
 
+## 1.1.0 - 2026-04-07
+
+### What's Changed
+
+* feat: add host-scoped auth contexts by @AlexVanderbist in https://github.com/spatie/flare-cli/pull/16
+
+**Full Changelog**: https://github.com/spatie/flare-cli/compare/1.0.2...1.1.0
+
 ## 1.0.2 - 2026-02-24
 
 ### What's Changed
