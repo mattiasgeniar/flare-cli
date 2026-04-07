@@ -2,6 +2,7 @@
 
 use App\Services\CredentialStore;
 use App\Services\FlareUrlResolver;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -92,7 +93,7 @@ it('validates the token against the active base URL', function () {
 it('shows connection error on network failure', function () {
     Http::fake([
         'flareapp.io/api/me' => function () {
-            throw new \Illuminate\Http\Client\ConnectionException('Connection refused');
+            throw new ConnectionException('Connection refused');
         },
     ]);
 
