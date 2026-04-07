@@ -6,8 +6,9 @@ class CredentialStore
 {
     private string $configPath;
 
-    public function __construct()
-    {
+    public function __construct(
+        private readonly FlareUrlResolver $urlResolver = new FlareUrlResolver
+    ) {
         $home = $_SERVER['HOME'] ?? $_SERVER['USERPROFILE'] ?? '';
 
         $this->configPath = "{$home}/.flare/config.json";
@@ -15,36 +16,39 @@ class CredentialStore
 
     public function getToken(): ?string
     {
-        if (! file_exists($this->configPath)) {
-            return null;
-        }
-
-        $data = json_decode(file_get_contents($this->configPath), true);
-
-        return $data['token'] ?? null;
+        return $this->readTokens()[$this->urlResolver->getHostKey()] ?? null;
     }
 
     public function setToken(string $token): void
     {
         $this->ensureConfigDirectoryExists();
 
-        $data = $this->readConfig();
-        $data['token'] = $token;
+        $tokens = $this->readTokens();
+        $tokens[$this->urlResolver->getHostKey()] = $token;
 
-        file_put_contents(
-            $this->configPath,
-            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
-        );
+        $this->writeTokens($tokens);
     }
 
     public function flush(): void
     {
+        if (! file_exists($this->configPath)) {
+            return;
+        }
+
         $this->ensureConfigDirectoryExists();
 
-        file_put_contents(
-            $this->configPath,
-            json_encode((object) [], JSON_PRETTY_PRINT),
-        );
+        $tokens = $this->readTokens();
+        unset($tokens[$this->urlResolver->getHostKey()]);
+
+        $this->writeTokens($tokens);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function getConfiguredHosts(): array
+    {
+        return array_keys($this->readTokens());
     }
 
     private function ensureConfigDirectoryExists(): void
@@ -64,5 +68,54 @@ class CredentialStore
         }
 
         return json_decode(file_get_contents($this->configPath), true) ?? [];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function readTokens(): array
+    {
+        $data = $this->readConfig();
+        $tokens = $data['tokens'] ?? [];
+
+        if (! is_array($tokens)) {
+            $tokens = [];
+        }
+
+        $tokens = array_filter(
+            $tokens,
+            fn (mixed $token, mixed $host): bool => is_string($host) && is_string($token) && $token !== '',
+            ARRAY_FILTER_USE_BOTH,
+        );
+
+        if (
+            isset($data['token']) &&
+            is_string($data['token']) &&
+            $data['token'] !== '' &&
+            ! array_key_exists('flareapp.io', $tokens)
+        ) {
+            $tokens['flareapp.io'] = $data['token'];
+        }
+
+        ksort($tokens);
+
+        return $tokens;
+    }
+
+    /**
+     * @param  array<string, string>  $tokens
+     */
+    private function writeTokens(array $tokens): void
+    {
+        ksort($tokens);
+
+        $data = $this->readConfig();
+        unset($data['token']);
+        $data['tokens'] = $tokens === [] ? (object) [] : $tokens;
+
+        file_put_contents(
+            $this->configPath,
+            json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES),
+        );
     }
 }

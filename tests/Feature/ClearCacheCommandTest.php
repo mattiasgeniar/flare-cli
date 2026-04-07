@@ -1,10 +1,23 @@
 <?php
 
+use App\Providers\AppServiceProvider;
+use App\Services\CredentialStore;
+use App\Services\FlareUrlResolver;
 use Illuminate\Support\Facades\Cache;
 use Spatie\OpenApiCli\OpenApiCli;
 
+afterEach(function () {
+    OpenApiCli::clearRegistrations();
+    app()->forgetInstance(CredentialStore::class);
+    app()->forgetInstance(FlareUrlResolver::class);
+    (new AppServiceProvider($this->app))->boot();
+});
+
 it('clears the cached OpenAPI spec', function () {
-    $registration = OpenApiCli::getRegistrations()[0];
+    OpenApiCli::clearRegistrations();
+
+    $registration = OpenApiCli::register('https://example.com/flare-api.yaml')
+        ->cache(ttl: 60 * 60 * 24);
 
     $key = $registration->getCachePrefix().md5($registration->getSpecPath());
     $store = $registration->getCacheStore();
