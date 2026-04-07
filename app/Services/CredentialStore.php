@@ -31,6 +31,10 @@ class CredentialStore
 
     public function flush(): void
     {
+        if (! file_exists($this->configPath)) {
+            return;
+        }
+
         $this->ensureConfigDirectoryExists();
 
         $tokens = $this->readTokens();

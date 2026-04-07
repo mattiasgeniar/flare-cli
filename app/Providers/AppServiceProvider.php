@@ -21,7 +21,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(DescriberContract::class, FlareDescriber::class);
         $urlResolver = $this->app->make(FlareUrlResolver::class);
 
-        OpenApiCli::register(specPath: resource_path('openapi/flare-api.yaml'))
+        OpenApiCli::register(specPath: 'https://flareapp.io/downloads/flare-api.yaml')
             ->useOperationIds()
             ->baseUrl($urlResolver->getApiBaseUrl())
             ->cache(ttl: 60 * 60 * 24)

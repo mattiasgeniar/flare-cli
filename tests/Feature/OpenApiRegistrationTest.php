@@ -58,7 +58,10 @@ it('registers the OpenAPI commands with the active base URL and auth context', f
 
     $registration = OpenApiCli::getRegistrations()[0];
 
-    expect($registration->getSpecPath())->toBe(resource_path('openapi/flare-api.yaml'));
+    expect($registration->getSpecPath())->toBe('https://flareapp.io/downloads/flare-api.yaml');
     expect($registration->getBaseUrl())->toBe('https://staging.flareapp.io/api');
-    expect(($registration->getAuthCallable())())->toBe('staging-token');
+
+    $store->setToken('late-staging-token');
+
+    expect(($registration->getAuthCallable())())->toBe('late-staging-token');
 });

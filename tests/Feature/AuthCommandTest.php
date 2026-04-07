@@ -73,4 +73,5 @@ it('reports when the active auth context is missing', function () {
     expect($output)->toContain('missing');
     expect($output)->toContain('flareapp.io');
     expect($output)->toContain('staging.flareapp.io');
+    expect($output)->toContain('Run `flare login` to authenticate against staging.flareapp.io.');
 });

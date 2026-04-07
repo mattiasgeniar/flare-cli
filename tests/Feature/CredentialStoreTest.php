@@ -85,6 +85,12 @@ it('flushes only the active host context', function () {
     expect((new CredentialStore(new FlareUrlResolver))->getToken())->toBe('production-token');
 });
 
+it('does not create a config file when flushing without stored credentials', function () {
+    $this->store->flush();
+
+    expect(file_exists($this->tempDir.'/.flare/config.json'))->toBeFalse();
+});
+
 it('creates the config directory if it does not exist', function () {
     $configDir = $this->tempDir.'/.flare';
 

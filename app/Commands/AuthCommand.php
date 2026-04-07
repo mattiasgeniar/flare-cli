@@ -21,6 +21,11 @@ class AuthCommand extends Command
         $this->line("Active base URL: {$urlResolver->getApiBaseUrl()}");
         $this->line("Active host: {$activeHost}");
         $this->line('Active context: '.($isConfigured ? 'configured' : 'missing'));
+
+        if (! $isConfigured) {
+            $this->line("Run `flare login` to authenticate against {$activeHost}.");
+        }
+
         $this->newLine();
         $this->line('Stored auth contexts:');
 
